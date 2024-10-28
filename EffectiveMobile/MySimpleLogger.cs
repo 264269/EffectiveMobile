@@ -8,6 +8,7 @@ namespace EffectiveMobile
 {
     internal class MySimpleLogger
     {
+        public const string DEFAULT_DELIVERY_LOG = "./log/log.txt";
         private static MySimpleLogger instance;
         private string _file;
 
@@ -20,7 +21,7 @@ namespace EffectiveMobile
         public static MySimpleLogger GetInstance()
         {
             if (instance == null)
-                CreateInstance("./log.txt");
+                instance = new MySimpleLogger(DEFAULT_DELIVERY_LOG);
             return instance;
         }
 
@@ -32,7 +33,8 @@ namespace EffectiveMobile
 
         public void Log(string message)
         {
-            File.AppendAllLines(_file, new List<string>() { message });
+            try { File.AppendAllLines(_file, new List<string>() { message }); }
+            catch { }
         }
 
         public void CreateFileIfNecessary()

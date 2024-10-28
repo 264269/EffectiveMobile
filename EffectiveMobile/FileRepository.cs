@@ -56,7 +56,7 @@ namespace EffectiveMobile
                                 .Build();
 
                             if (ids.Contains(order.Id))
-                                throw new Exception($"Повторение строки с id = {order.Id}");
+                                throw new Exception($"Повторение строки с id = {order.Id} (для {order})");
                             orders.Add(order);
                             ids.Add(order.Id);
                         }

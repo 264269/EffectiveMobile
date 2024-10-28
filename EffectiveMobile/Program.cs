@@ -3,26 +3,35 @@ using EffectiveMobile;
 using System.Globalization;
 using System.Configuration;
 
-
 try
 {
-    string deliveryLog = GetParameter("_deliveryLog", false) ?? "./log/log.txt";
-    deliveryLog = deliveryLog.EndsWith(".txt") ? deliveryLog : "./log/log.txt";
+    //  initialize custom logger
+    string defaultDeliveryLog = MySimpleLogger.DEFAULT_DELIVERY_LOG;
+    string deliveryLog = GetParameter("_deliveryLog", false) ?? defaultDeliveryLog;
+    deliveryLog = deliveryLog.EndsWith(".txt") ? deliveryLog : defaultDeliveryLog;
+    deliveryLog = IsValidPath(deliveryLog) ? deliveryLog : defaultDeliveryLog;
 
     MySimpleLogger.CreateInstance(deliveryLog);
     MySimpleLogger.GetInstance().Log($"---- Запуск программы {DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")} ----");
 
-    string? deliveryData = GetParameter("_deliveryData", false) ?? "./data/orders.txt";
-    deliveryData = deliveryData.EndsWith(".txt") ? deliveryData : "./data/orders.txt";
+    //  initialize default orders file
+    string defaultDeliveryData = "./data/orders.txt";
+    string deliveryData = GetParameter("_deliveryData", false) ?? defaultDeliveryData;
+    deliveryData = deliveryData.EndsWith(".txt") ? deliveryData : defaultDeliveryData;
+    deliveryLog = IsValidPath(deliveryLog) ? deliveryData : defaultDeliveryData;
 
     IRepository realRepository = new FileRepository(deliveryData);
     IRepository proxy = new ProxyRepository(realRepository);
 
     Requester requester = new(proxy);
 
-    string deliveryOrder = GetParameter("_deliveryOrder", false) ?? "./data/result.txt";
-    deliveryOrder = deliveryOrder.EndsWith(".txt") ? deliveryOrder : "./data/result.txt";
+    //  initialize default result file
+    string defaultDeliveryOrder = "./data/result.txt";
+    string deliveryOrder = GetParameter("_deliveryOrder", false) ?? defaultDeliveryOrder;
+    deliveryOrder = deliveryOrder.EndsWith(".txt") ? deliveryOrder : defaultDeliveryOrder;
+    deliveryOrder = IsValidPath(deliveryOrder) ? deliveryOrder : defaultDeliveryOrder;
 
+    //  get params
     string? cityDistrict = GetParameter("_cityDistrict", false);
     string? firstDeliveryDateTime = GetParameter("_firstDeliveryDateTime", false);
 
@@ -32,15 +41,40 @@ catch (Exception e) { Console.WriteLine(e.Message + " : " + e.StackTrace); }
 
 string? GetParameter(string argName, bool isFlag)
 {
+    string? result = null;
+    for (int i = 0; i < args.Length; i++)
+    {
+        if (args[i].Equals(argName))
+        {
+            if (isFlag)
+                result = args[i];
+            else
+                result = (++i < args.Length) ? args[i] : null;
+            break;
+        }
+    }
+    return result;
+}
+
+bool IsValidPath(string path, bool allowRelativePaths = false)
+{
+    bool isValid = true;
+
     try
     {
-        for (int i = 0; i < args.Length; i++)
-            if (args[i].Equals(argName))
-                return isFlag ? args[i] : args[++i];
+        string fullPath = Path.GetFullPath(path);
+
+        if (allowRelativePaths)
+            isValid = Path.IsPathRooted(path);
+        else
+        {
+            string root = Path.GetPathRoot(path);
+            isValid = string.IsNullOrEmpty(root.Trim(new char[] { '\\', '/' })) == false;
+        }
     }
-    catch (Exception e) { Console.WriteLine(e.Message); }
-    Console.WriteLine($"Не удалось найти параметр {argName}");
-    return null;
+    catch { isValid = false; }
+
+    return isValid;
 }
 
 
