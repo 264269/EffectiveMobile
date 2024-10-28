@@ -2,122 +2,51 @@
 
 namespace EffectiveMobile
 {
-    internal class Requester(IRepository repository, string[] args)
+    internal class Requester(IRepository repository)
     {
         IRepository repository = repository;
-        string[] args = args;
 
-        public void Run()
+        public void RunWithParams(string orderFile, string? district, string? date)
         {
-            RunWithParams();
-            //try
-            //{
-            //    string? isInteractive = GetParameter("--i", true);
-            //    if (isInteractive != null) { RunInteractive(); } else { RunWithParams(); }
-            //}
-            //catch (Exception e) { Console.WriteLine(e.Message); }
-        }
-
-        //public void RunInteractive()
-        //{
-
-        //}
-
-        public void RunWithParams()
-        {
-            string? orderFileName = GetOrderFile() ?? throw new ArgumentException("Необходимо указать путь к файлу с результатом (_deliveryOrder)");
-            string? logFileName = GetOrderFile() ?? throw new ArgumentException("Необходимо указать путь к файлу с результатом (_deliveryOrder)");
-            int? district = GetDistrict();
-            DateTime? date = GetDate();
-
+            MySimpleLogger.GetInstance().Log($"Запуск фильтрации заказов: orderFile={orderFile}, district={district}, date={date}");
             List<Order> orders = repository.ReadOrders();
             List<Order> result = [];
             foreach (Order order in orders)
             {
-                if (district.HasValue)
-                {
-                    bool sameDistrict = order.District.Equals(district.Value);
-                    if (!sameDistrict) continue;
-                }
-                if (date.HasValue)
-                {
-                    bool from = order.DeliveryTime.CompareTo(date.Value) >= 0;
-                    bool to = order.DeliveryTime.CompareTo(date.Value.AddMinutes(30)) <= 0;
-                    bool fromAndTo = from && to;
-                    if (!fromAndTo) continue;
-                }
+                if (!CheckDistrict(district, order) || !CheckDate(date, order))
+                    continue;
                 result.Add(order);
             }
 
-            IRepository outRepository = new FileRepository(orderFileName);
+            IRepository outRepository = new FileRepository(orderFile);
             outRepository.WriteOrders(result);
-            foreach (Order order in result) { Console.WriteLine(order.ToString()); }
         }
 
-        public int? GetDistrict()
+        public static bool CheckDistrict(string? district, Order order)
         {
-            string argKey = "_cityDistrict";
-            string? argValue = GetParameter(argKey, false);
-            if (argValue != null)
-            {
-                try { return int.Parse(argValue); }
-                catch (Exception e) { Console.WriteLine($"Не удалось распознать значение параметра {argKey} : {argValue}"); }
-            }
-            return null;
-        }
-
-        public DateTime? GetDate()
-        {
-            string argKey = "_firstDeliveryDateTime";
-            string? argValue = GetParameter(argKey, false);
-            if (argValue != null)
-            {
-                try { return DateTime.ParseExact(argValue, "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture); }
-                catch (Exception e) { Console.WriteLine($"Не удалось распознать значение параметра {argKey} : {argValue}"); }
-            }
-            return null;
-        }
-
-        public string? GetOrderFile()
-        {
-            string argKey = "_deliveryOrder";
-            string? argValue = GetParameter(argKey, false);
-            if (argValue != null)
-            {
-                return argValue;
-            }
-            return null;
-        }
-
-        public string? GetLogFile()
-        {
-            string argKey = "_deliveryLog";
-            string? argValue = GetParameter(argKey, false);
-            if (argValue != null)
-            {
-                return argValue;
-            }
-            return null;
-        }
-
-        private string? GetParameter(string argName, bool isFlag)
-        {
+            if (district == null)
+                return false;
             try
             {
-                for (int i = 0; i < args.Length; i++)
-                {
-                    if (args[i].Equals(argName))
-                    {
-                        return isFlag ? args[i] : args[++i];
-                    }
-                }
+                return order.District == int.Parse(district);
             }
-            catch (Exception e)
+            catch { MySimpleLogger.GetInstance().Log("Не удалось распознать значение параметра _cityDistrict"); }
+            return false;
+        }
+
+        public static bool CheckDate(string? date, Order order)
+        {
+            if (date == null)
+                return false;
+            try
             {
-                Console.WriteLine(e.Message);
+                DateTime dateParsed = DateTime.ParseExact(date, "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+                bool from = order.DeliveryTime.CompareTo(dateParsed) >= 0;
+                bool to = order.DeliveryTime.CompareTo(dateParsed.AddMinutes(30)) <= 0;
+                return from && to;
             }
-            Console.WriteLine($"Не удалось найти параметр {argName}");
-            return null;
+            catch { MySimpleLogger.GetInstance().Log("Не удалось распознать значение параметра _firstDeliveryDateTime"); }
+            return false;
         }
     }
 }

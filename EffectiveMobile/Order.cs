@@ -20,6 +20,7 @@ namespace EffectiveMobile
 
         private Order(OrderBuilder builder)
         {
+            MySimpleLogger.GetInstance().Log($"Создание Order из {builder}");
             _id = builder.Id;
             _weight = builder.Weight;
             _district = builder.District;
@@ -60,6 +61,11 @@ namespace EffectiveMobile
             public Order Build()
             {
                 return new Order(this);
+            }
+
+            public override string? ToString()
+            {
+                return $"OrderBuilder: id={Id}, weight={Weight.ToString("N3").Replace(",", ".")}, district = {District}, deliveryTime = {DeliveryTime.ToString("yyyy-MM-dd HH:mm:ss")}";
             }
         }
 
